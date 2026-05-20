@@ -1,0 +1,39 @@
+﻿@inherits LayoutComponentBase
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="" class="logo">📚 Библиотека</a>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <NavLink href="" Match="NavLinkMatch.All" class="nav-link" ActiveClass="active">
+                    Главная
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink href="books" class="nav-link" ActiveClass="active">
+                    Книги
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink href="readers" class="nav-link" ActiveClass="active">
+                    Читатели
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink href="issuance" class="nav-link" ActiveClass="active">
+                    Выдача
+                </NavLink>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<main class="main-content">
+    @Body
+</main>
+
+<div id="blazor-error-ui">
+    Произошла ошибка. Пожалуйста, обновите страницу.
+    <a href="" class="reload">Обновить</a>
+    <a class="dismiss">🗙</a>
+</div>

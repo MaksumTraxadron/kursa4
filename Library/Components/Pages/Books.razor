@@ -1,0 +1,169 @@
+﻿@page "/books"
+@inject SchoolLibrary.Services.LibraryService LibraryService
+@rendermode InteractiveServer
+
+<PageTitle>Каталог книг — Школьная библиотека</PageTitle>
+
+<h1 class="section-title">Каталог книг</h1>
+
+<div class="table-container">
+    <div class="table-header">
+        <input type="text" class="search-box" placeholder="🔍 Поиск по названию или автору..."
+               @bind="searchQuery" @bind:event="oninput" />
+        <button class="add-btn" @onclick="OpenModal">+ Добавить книгу</button>
+    </div>
+
+    <table class="library-table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Автор</th>
+                <th>Год</th>
+                <th>Жанр</th>
+                <th>Количество экземпляров</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in FilteredBooks)
+            {
+                <tr>
+                    <td><strong>@book.Title</strong></td>
+                    <td>@book.Author</td>
+                    <td>@book.Year</td>
+                    <td><span class="genre-tag @book.GenreClass">@book.Genre</span></td>
+                    <td>
+                        <span class="quantity @(book.Quantity < 5 ? "low" : "")">
+                            @book.Quantity шт.
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно -->
+@if (showModal)
+{
+    <div class="modal-overlay active" @onclick="CloseModalOnOverlay">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3 class="modal-title">Добавить книгу</h3>
+                <button class="modal-close" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Название</label>
+                    <input type="text" class="form-input" @bind="newBook.Title" placeholder="Введите название книги" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Автор</label>
+                    <input type="text" class="form-input" @bind="newBook.Author" placeholder="Введите ФИО автора" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Год издания</label>
+                    <input type="number" class="form-input" @bind="newBook.Year" min="1800" max="2030" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Жанр</label>
+                    <select class="form-select" @bind="newBook.Genre">
+                        <option value="">Выберите жанр</option>
+                        <option value="Классика">Классика</option>
+                        <option value="Фантастика">Фантастика</option>
+                        <option value="Наука">Наука</option>
+                        <option value="История">История</option>
+                        <option value="Детектив">Детектив</option>
+                        <option value="Приключения">Приключения</option>
+                        <option value="Учебник">Учебник</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Количество экземпляров</label>
+                    <input type="number" class="form-input" @bind="newBook.Quantity" min="1" />
+                </div>
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="validation-message">@errorMessage</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseModal">Отмена</button>
+                <button class="btn-save" @onclick="SaveBook">Сохранить</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string searchQuery = "";
+    private bool showModal = false;
+    private string errorMessage = "";
+    private Book newBook = new();
+
+    private IEnumerable<Book> FilteredBooks =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? LibraryService.Books
+            : LibraryService.Books.Where(b =>
+                b.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                b.Author.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    private void OpenModal()
+    {
+        newBook = new Book { Quantity = 1 };
+        errorMessage = "";
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void CloseModalOnOverlay(MouseEventArgs e)
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void SaveBook()
+    {
+        // Валидация
+        if (string.IsNullOrWhiteSpace(newBook.Title))
+        {
+            errorMessage = "Пожалуйста, введите название книги!";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(newBook.Author))
+        {
+            errorMessage = "Пожалуйста, введите автора!";
+            return;
+        }
+        if (newBook.Year < 1800 || newBook.Year > 2030)
+        {
+            errorMessage = "Пожалуйста, введите корректный год издания (1800-2030)!";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(newBook.Genre))
+        {
+            errorMessage = "Пожалуйста, выберите жанр!";
+            return;
+        }
+        if (newBook.Quantity < 1)
+        {
+            errorMessage = "Пожалуйста, введите корректное количество экземпляров!";
+            return;
+        }
+
+        // Проверка на дубликат
+        if (LibraryService.BookExists(newBook.Title, newBook.Author))
+        {
+            errorMessage = "Такая книга уже существует в каталоге!";
+            return;
+        }
+
+        LibraryService.AddBook(newBook);
+        showModal = false;
+        newBook = new Book();
+    }
+}

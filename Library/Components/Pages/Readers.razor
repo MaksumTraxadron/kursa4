@@ -1,0 +1,124 @@
+﻿@page "/readers"
+@inject SchoolLibrary.Services.LibraryService LibraryService
+@rendermode InteractiveServer
+
+<PageTitle>Читатели — Школьная библиотека</PageTitle>
+
+<h1 class="section-title">Читатели</h1>
+
+<div class="table-container">
+    <div class="table-header">
+        <input type="text" class="search-box" placeholder="🔍 Поиск по ФИО..."
+               @bind="searchQuery" @bind:event="oninput" />
+        <button class="add-btn" @onclick="OpenModal">+ Добавить читателя</button>
+    </div>
+
+    <table class="library-table">
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Номер читательского билета</th>
+                <th>Номер класса</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var reader in FilteredReaders)
+            {
+                <tr>
+                    <td><strong>@reader.FullName</strong></td>
+                    <td><span class="ticket-number">№ @reader.TicketNumber</span></td>
+                    <td><span class="class-number">@reader.ClassNumber</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно -->
+@if (showModal)
+{
+    <div class="modal-overlay active" @onclick="CloseModalOnOverlay">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3 class="modal-title">Добавить читателя</h3>
+                <button class="modal-close" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">ФИО</label>
+                    <input type="text" class="form-input" @bind="newReader.FullName" placeholder="Введите ФИО ученика" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Номер класса</label>
+                    <input type="text" class="form-input" @bind="newReader.ClassNumber" placeholder="Например: 9А, 10Б" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Номер читательского билета</label>
+                    <input type="text" class="form-input" value="@nextTicketNumber" readonly style="background-color: #ecf0f1; color: #7f8c8d;" />
+                    <div class="form-hint">Номер назначается автоматически</div>
+                </div>
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="validation-message">@errorMessage</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseModal">Отмена</button>
+                <button class="btn-save" @onclick="SaveReader">Сохранить</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string searchQuery = "";
+    private bool showModal = false;
+    private string errorMessage = "";
+    private Reader newReader = new();
+    private int nextTicketNumber => LibraryService.Readers.Count > 0
+        ? LibraryService.Readers.Max(r => r.TicketNumber) + 1
+        : 1;
+
+    private IEnumerable<Reader> FilteredReaders =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? LibraryService.Readers
+            : LibraryService.Readers.Where(r =>
+                r.FullName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    private void OpenModal()
+    {
+        newReader = new Reader();
+        errorMessage = "";
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void CloseModalOnOverlay(MouseEventArgs e)
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void SaveReader()
+    {
+        if (string.IsNullOrWhiteSpace(newReader.FullName))
+        {
+            errorMessage = "Пожалуйста, введите ФИО!";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(newReader.ClassNumber))
+        {
+            errorMessage = "Пожалуйста, введите номер класса!";
+            return;
+        }
+
+        LibraryService.AddReader(newReader);
+        showModal = false;
+        newReader = new Reader();
+    }
+}

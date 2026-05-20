@@ -1,0 +1,169 @@
+﻿@page "/issuance"
+@inject SchoolLibrary.Services.LibraryService LibraryService
+@rendermode InteractiveServer
+
+<PageTitle>Журнал выдачи — Школьная библиотека</PageTitle>
+
+<h1 class="section-title">Журнал выдачи книг</h1>
+
+<div class="table-container">
+    <div class="table-header">
+        <input type="text" class="search-box" placeholder="🔍 Поиск по ФИО или книге..."
+               @bind="searchQuery" @bind:event="oninput" />
+        <button class="add-btn" @onclick="OpenModal">+ Выдать книгу</button>
+    </div>
+
+    <table class="library-table">
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Номер читательского билета</th>
+                <th>Книга</th>
+                <th>Дата выдачи</th>
+                <th>Дата сдачи</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var issuance in FilteredIssuances)
+            {
+                <tr>
+                    <td><span class="reader-name">@issuance.FullName</span></td>
+                    <td><span class="ticket-number">№ @issuance.TicketNumber</span></td>
+                    <td><span class="book-title">"@issuance.BookTitle"</span></td>
+                    <td><span class="date-badge date-issue">@issuance.IssueDate.ToString("dd.MM.yyyy")</span></td>
+                    <td>
+                        <span class="date-badge @(issuance.IsOverdue ? "date-overdue" : "date-due")">
+                            @issuance.DueDate.ToString("dd.MM.yyyy")
+                            @if (issuance.IsOverdue)
+                            {
+                                <span> (просрочено)</span>
+                            }
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно -->
+@if (showModal)
+{
+    <div class="modal-overlay active" @onclick="CloseModalOnOverlay">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3 class="modal-title">Выдать книгу</h3>
+                <button class="modal-close" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Читатель</label>
+                    <select class="form-select" @bind="selectedReaderTicket">
+                        <option value="0">Выберите читателя</option>
+                        @foreach (var reader in LibraryService.Readers)
+                        {
+                            <option value="@reader.TicketNumber">
+                                @reader.FullName (Билет №@reader.TicketNumber, @reader.ClassNumber)
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Книга</label>
+                    <select class="form-select" @bind="selectedBookTitle">
+                        <option value="">Выберите книгу</option>
+                        @foreach (var book in LibraryService.Books)
+                        {
+                            <option value="@book.Title">
+                                @book.Title — @book.Author
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата выдачи</label>
+                    <input type="text" class="form-input" value="@DateTime.Now.ToString("dd.MM.yyyy")" readonly style="background-color: #ecf0f1; color: #2e7d32;" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата сдачи</label>
+                    <input type="text" class="form-input" value="@DateTime.Now.AddDays(7).ToString("dd.MM.yyyy")" readonly style="background-color: #ecf0f1; color: #ef6c00;" />
+                    <div class="form-hint">Автоматически: дата выдачи + 7 дней</div>
+                </div>
+                <div class="date-info">
+                    📅 Сегодня: <strong>@DateTime.Now.ToString("dd.MM.yyyy")</strong> | Срок возврата: <strong>@DateTime.Now.AddDays(7).ToString("dd.MM.yyyy")</strong>
+                </div>
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="validation-message">@errorMessage</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseModal">Отмена</button>
+                <button class="btn-save" @onclick="SaveIssuance">Выдать книгу</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string searchQuery = "";
+    private bool showModal = false;
+    private string errorMessage = "";
+    private int selectedReaderTicket = 0;
+    private string selectedBookTitle = "";
+
+    private IEnumerable<IssuanceRecord> FilteredIssuances =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? LibraryService.Issuances
+            : LibraryService.Issuances.Where(i =>
+                i.FullName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                i.BookTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    private void OpenModal()
+    {
+        selectedReaderTicket = 0;
+        selectedBookTitle = "";
+        errorMessage = "";
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void CloseModalOnOverlay(MouseEventArgs e)
+    {
+        showModal = false;
+        errorMessage = "";
+    }
+
+    private void SaveIssuance()
+    {
+        if (selectedReaderTicket == 0)
+        {
+            errorMessage = "Пожалуйста, выберите читателя!";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(selectedBookTitle))
+        {
+            errorMessage = "Пожалуйста, выберите книгу!";
+            return;
+        }
+
+        var reader = LibraryService.Readers.First(r => r.TicketNumber == selectedReaderTicket);
+
+        var newIssuance = new IssuanceRecord
+        {
+            FullName = reader.FullName,
+            TicketNumber = reader.TicketNumber,
+            BookTitle = selectedBookTitle,
+            IssueDate = DateTime.Now,
+            DueDate = DateTime.Now.AddDays(7)
+        };
+
+        LibraryService.AddIssuance(newIssuance);
+        showModal = false;
+    }
+}

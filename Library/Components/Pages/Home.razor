@@ -1,0 +1,37 @@
+﻿@page "/"
+@inject SchoolLibrary.Services.LibraryService LibraryService
+
+<PageTitle>Главная — Школьная библиотека</PageTitle>
+
+<h1 class="section-title">Главная</h1>
+
+<div class="welcome-text">
+    <h2 style="margin-bottom: 15px; color: #2c3e50;">Добро пожаловать в систему управления школьной библиотекой!</h2>
+    <p>
+        Это приложение помогает управлять книжным фондом, читателями и процессом выдачи книг.
+        Используйте меню навигации для перехода между разделами.
+    </p>
+</div>
+
+<div class="home-content">
+    <div class="stat-card">
+        <div class="stat-label">Всего книг</div>
+        <div class="stat-number">@LibraryService.TotalBooksCount</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Читателей</div>
+        <div class="stat-number">@LibraryService.ReadersCount</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Выдано книг</div>
+        <div class="stat-number">@LibraryService.IssuedCount</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Доступно экземпляров</div>
+        <div class="stat-number">@LibraryService.TotalCopies</div>
+    </div>
+</div>
+
+@code {
+    // Статистика автоматически обновляется благодаря инжекции сервиса
+}
